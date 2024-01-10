@@ -1,103 +1,86 @@
-from xbox_threaded import *
-import scipy.constants
-import pybullet as p
-import numpy as np
-import threading
 import time
-import math
+import threading
+import pybullet as p
+import scipy.constants
+from base_controller import start_controller
+from xbox_controller import XboxController
 
-# Paths to the car and track models
-TRACK_MODEL_PATH = "resources/meshes/barca_track.sdf"
-CAR_MODEL_PATH = "resources/racecar_differential.urdf"
-USE_REAL_TIME_SIM = False
+class CarSimulation:
+    def __init__(self):
+        self.setup_simulation()
 
-# Joint indices for the car
-WHEEL_JOINTS = [8,15]
-STEERING_JOINTS = [0,2]
-HOKUYO_JOINT = 4
-ZED_CAMERA_JOINT = 5
+    def setup_simulation(self):
+        # PyBullet setup code here
+        TRACK_MODEL_PATH = "resources/meshes/barca_track.sdf"
+        CAR_MODEL_PATH = "resources/racecar_differential.urdf"
+        GEAR_DATA = [
+            (9, 11, 1),
+            (10, 13, -1),
+            (9, 13, -1),
+            (16, 18, 1),
+            (16, 19, -1),
+            (17, 19, -1),
+            (1, 18, -1, 15),
+            (3, 19, -1, 15)
+        ]
 
-# Gear data for the car
-GEAR_DATA = [
-    (9, 11, 1),
-    (10, 13, -1),
-    (9, 13, -1),
-    (16, 18, 1),
-    (16, 19, -1),
-    (17, 19, -1),
-    (1, 18, -1, 15),
-    (3, 19, -1, 15)
-]
+        p.connect(p.GUI)
+        p.resetSimulation()
+        p.setGravity(0, 0, -scipy.constants.g)
+        p.setTimeStep(1. / 240.)
+        p.setRealTimeSimulation(0)
 
-# Setup pybullet and load the car and track
-p.connect(p.GUI)
-p.resetSimulation()
-p.setGravity(0, 0, -scipy.constants.g)
+        self.track = p.loadSDF(TRACK_MODEL_PATH, globalScaling=1)
+        self.car = p.loadURDF(CAR_MODEL_PATH, [0, 0, .3])
 
-# Set to 240 Hz
-p.setTimeStep(1./240.)
+        for joint in range(p.getNumJoints(self.car)):
+            p.setJointMotorControl2(self.car, joint, p.VELOCITY_CONTROL, targetVelocity=0, force=0)
 
-# So we can explicitly step through sim, see PyBullet docs (pg. 33)
-p.setRealTimeSimulation(0)
+        for gear in GEAR_DATA:
+            parent, child, gear_ratio = gear[:3]
+            c = p.createConstraint(self.car, parent, self.car, child, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
+                                   parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
+            if len(gear) == 4:
+                aux_link = gear[3]
+                p.changeConstraint(c, gearRatio=gear_ratio, gearAuxLink=aux_link, maxForce=10000)
+            else:
+                p.changeConstraint(c, gearRatio=gear_ratio, maxForce=10000)
 
-# Load track and car
-track = p.loadSDF(TRACK_MODEL_PATH, globalScaling=1)
-car = p.loadURDF(CAR_MODEL_PATH, [0,0,.3])
+        self.shared_vars = {'target_velocity': 0, 'steering_angle': 0}
+        self.shared_vars_lock = threading.Lock()
 
-# Initialize joints velocities to 0, and set force applied to 0
-for joint in range(p.getNumJoints(car)):
-	p.setJointMotorControl2(car, joint, p.VELOCITY_CONTROL, targetVelocity=0, force=0)
+    def control_car(self):
+        MAX_FORCE = 30
+        control_hz = 240
+        last_time = time.time()
 
-# Create gear constraints and set parameters
-for gear in GEAR_DATA:
-    parent, child, gear_ratio = gear[:3]
-    c = p.createConstraint(car, parent, car, child, jointType=p.JOINT_GEAR, jointAxis=[0, 1, 0],
-                           parentFramePosition=[0, 0, 0], childFramePosition=[0, 0, 0])
-    if len(gear) == 4:
-        aux_link = gear[3]
-        p.changeConstraint(c, gearRatio=gear_ratio, gearAuxLink=aux_link, maxForce=10000)
-    else:
-        p.changeConstraint(c, gearRatio=gear_ratio, maxForce=10000)
+        while True:
+            now_control_time = time.time()
+            if now_control_time - last_time > 1. / control_hz:
+                with self.shared_vars_lock:
+                    target_velocity = self.shared_vars['target_velocity']
+                    steering_angle = self.shared_vars['steering_angle']
 
-shared_vars = {'target_velocity': 0, 'steering_angle': 0}
-shared_vars_lock = threading.Lock()
+                for wheel in [8, 15]:
+                    p.setJointMotorControl2(self.car, wheel, p.VELOCITY_CONTROL, targetVelocity=target_velocity, force=MAX_FORCE)
 
-MAX_FORCE = 30
-def control_car(hz=100., last_time=0., shared_vars=None, shared_vars_lock=None):
-    while True:
-        now_control_time = time.time()
-        if now_control_time - last_time > 1./hz:
-            with shared_vars_lock:
-                target_velocity = shared_vars['target_velocity']
-                steering_angle = shared_vars['steering_angle']
+                for steer in [0, 2]:
+                    p.setJointMotorControl2(self.car, steer, p.POSITION_CONTROL, targetPosition=-steering_angle)
 
-            # Set target_velocity and steering_angle for control
-            for wheel in WHEEL_JOINTS:
-                p.setJointMotorControl2(car, wheel, p.VELOCITY_CONTROL, targetVelocity=target_velocity, force=MAX_FORCE)
+                p.stepSimulation()
+                last_time = now_control_time
+            time.sleep(0.01)
 
-            for steer in STEERING_JOINTS:
-                p.setJointMotorControl2(car, steer, p.POSITION_CONTROL, targetPosition=-steering_angle)
+    def run_simulation(self):
+        control_thread = threading.Thread(target=self.control_car)
+        control_thread.start()
 
-            p.stepSimulation()
-            last_time = now_control_time
-        time.sleep(0.01)  # Sleep to control the update rate
+        start_controller(XboxController, self.shared_vars, self.shared_vars_lock)
 
-# Create and start threads for each task
-control_hz = 240.
-control_thread = threading.Thread(target=control_car, args=(control_hz, time.time(), shared_vars, shared_vars_lock))
-control_thread.start()
+        while True:
+            pass
 
-gamepad_monitor = GamepadMonitor(shared_vars, shared_vars_lock)
+if __name__ == "__main__":
+    simulation = CarSimulation()
+    simulation.run_simulation()
 
-# rhread to monitor the buttons event
-buttons_process = threading.Thread(target=gamepad_monitor.monitor_buttons_state)
-buttons_process.daemon = True
-buttons_process.start()
-
-# Thread to monitor the bumper event
-bumper_thread = threading.Thread(target=gamepad_monitor.monitor_bumper_state)
-bumper_thread.daemon = True
-bumper_thread.start()
-
-while True:
-    pass
