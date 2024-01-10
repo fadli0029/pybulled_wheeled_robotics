@@ -1,3 +1,7 @@
+# TODO: Make a base class for x_sim.py files where x
+# is any wheeled robot, since for a given robot r, they
+# different methods are applied to control r and setup r. But,
+# ideally, run_simulation() should be the same for all robots.
 import time
 import threading
 import pybullet as p
