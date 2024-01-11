@@ -236,44 +236,52 @@
 			 </visual>
 			 </link>
 			</model>
-		<model name='part6.obj'>
-			<static>1</static>
-			<pose frame=''>0 0 0 0 0 0</pose>
-			<link name='link_d6'>
-			<inertial>
-			<mass>0</mass>
-			<inertia>
-			<ixx>0.166667</ixx>
-			<ixy>0</ixy>
-			<ixz>0</ixz>
-			<iyy>0.166667</iyy>
-			<iyz>0</iyz>
-			<izz>0.166667</izz>
-			</inertia>
-			</inertial>
-			<collision concave='yes' name='collision_6'>
-			<geometry>
-			<mesh>
-			<scale>1 1 1</scale>
-				<uri>part6.obj</uri>
-			</mesh>
-			</geometry>
-			  </collision>
-			<visual name='visual'>
-				<geometry>
-				<mesh>
-					<scale>1 1 1</scale>
-					<uri>part6.obj</uri>
-				</mesh>
-				</geometry>
-			<material>
-				<ambient>1 1 1 1</ambient>
-				<diffuse>0.6 0.6 0.6 1.000000</diffuse>
-				<specular>0.1 0.1 0.1 1</specular>
-				<emissive>0 0 0 0</emissive>
-			 </material>
-			 </visual>
-			 </link>
-			</model>
+      <model name='part6.obj'>
+          <static>1</static>
+          <pose frame=''>0 0 0 0 0 0</pose>
+          <link name='link_d6'>
+              <inertial>
+                  <mass>0</mass>
+                  <inertia>
+                      <ixx>0.166667</ixx>
+                      <ixy>0</ixy>
+                      <ixz>0</ixz>
+                      <iyy>0.166667</iyy>
+                      <iyz>0</iyz>
+                      <izz>0.166667</izz>
+                  </inertia>
+              </inertial>
+              <collision concave='yes' name='collision_6'>
+                  <geometry>
+                      <mesh>
+                          <scale>1 1 1</scale>
+                          <uri>part6.obj</uri>
+                      </mesh>
+                  </geometry>
+                  <surface>
+                      <friction>
+                          <ode>
+                              <mu>1.5</mu> <!-- Coefficient of friction -->
+                              <mu2>1.5</mu2> <!-- Alternate coefficient of friction -->
+                          </ode>
+                      </friction>
+                  </surface>
+              </collision>
+              <visual name='visual'>
+                  <geometry>
+                      <mesh>
+                          <scale>1 1 1</scale>
+                          <uri>part6.obj</uri>
+                      </mesh>
+                  </geometry>
+                  <material>
+                      <ambient>1 1 1 1</ambient>
+                      <diffuse>0.6 0.6 0.6 1.000000</diffuse>
+                      <specular>0.1 0.1 0.1 1</specular>
+                      <emissive>0 0 0 0</emissive>
+                  </material>
+              </visual>
+          </link>
+      </model>
 	</world>
 </sdf>
