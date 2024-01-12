@@ -1,9 +1,13 @@
-# TODO: 
+# TODO:
 # - Provide user with transformation T from base link to all sensors on the car.
 #   This page covers the theory related to this in great detail: http://wiki.ros.org/navigation/Tutorials/RobotSetup/TF
 # - Just like the controller where we passed around a shared_vars dictionary, we should do the same here for everything
 #   else that the robot needs to share: it's odom, sensor readings (z), control inputs (u), etc. since these are
 #   all needed for most of the algorithms we'll be implementing.
+# - For odom frame, just set to wherever the world frame is (that's for now, and it is justified based on theses:
+#   https://youtu.be/XCVtCBbsfGU?si=7JEpVdMc7QO4iF79&t=1293
+#   https://github.com/oscar-lima/pybullet_ros/blob/b0a79a7d290b9506d2ac3c3b1aa07ef65065e5cd/ros/src/pybullet_ros/plugins/odometry.py#L11
+#   What if the user decide to not start at (0, 0, 0) in the world frame? Need to ask Professor about this.
 import math
 import time
 import numpy as np
