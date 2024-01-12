@@ -16,7 +16,7 @@ LEFT_BUMPER_EVENT_CODE = 'ABS_Z'
 BUMPERS_MIN = 0
 BUMPERS_MAX = 1023
 
-MAX_VELOCITY = 50
+MAX_VELOCITY = 15
 
 class XboxController(BaseController):
     def __init__(self, shared_vars, shared_vars_lock):
